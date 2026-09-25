@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ticker — Simulador de Trading Cripto</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0E1015;
+    --panel:#161922;
+    --panel-2:#1C2029;
+    --border:#2A2F3B;
+    --text:#E9E7DE;
+    --text-dim:#8D92A3;
+    --amber:#E0A845;
+    --amber-dim:#8A6A2E;
+    --green:#4FA37D;
+    --green-dim:#2C4A3C;
+    --red:#C6564A;
+    --red-dim:#4A2C2A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:'Inter',system-ui,sans-serif;
+    line-height:1.5;
+    min-height:100vh;
+  }
+  .num{font-family:'IBM Plex Mono',monospace; font-variant-numeric: tabular-nums;}
+  a{color:var(--amber);}
+
+  .wrap{max-width:1220px; margin:0 auto; padding:28px 20px 60px;}
+
+  header{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    gap:20px; flex-wrap:wrap;
+    border-bottom:1px solid var(--border);
+    padding-bottom:18px; margin-bottom:22px;
+  }
+  header h1{
+    font-size:26px; margin:0 0 4px; font-weight:700; letter-spacing:-0.02em;
+  }
+  header h1 .dot{color:var(--amber);}
+  header p{margin:0; color:var(--text-dim); font-size:13.5px; max-width:560px;}
+  .badge-sim{
+    font-size:11px; color:var(--amber); border:1px solid var(--amber-dim);
+    background:rgba(224,168,69,0.08); padding:4px 9px; border-radius:20px;
+    white-space:nowrap;
+  }
+
+  .panel{
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:18px 20px;
+  }
+  .panel + .panel{margin-top:16px;}
+  .panel h2{
+    font-size:12.5px; font-weight:600; color:var(--text-dim);
+    margin:0 0 14px; text-transform:uppercase; letter-spacing:0.06em;
+  }
+  .panel h2 .sub{text-transform:none; letter-spacing:0; font-weight:400; color:var(--text-dim); font-size:11.5px;}
+
+  .controls-row{
+    display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end;
+  }
+  .field{display:flex; flex-direction:column; gap:6px; min-width:120px;}
+  .field label{font-size:11.5px; color:var(--text-dim);}
+  .field input, .field select{
+    background:var(--panel-2); border:1px solid var(--border); color:var(--text);
+    border-radius:6px; padding:8px 10px; font-size:13.5px; font-family:'IBM Plex Mono',monospace;
+    width:100%;
+  }
+  .field input:focus, .field select:focus{outline:1px solid var(--amber); border-color:var(--amber);}
+  .hint{font-size:11px; color:var(--text-dim); margin-top:10px;}
+
+  button{
+    font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600;
+    border-radius:6px; padding:9px 16px; cursor:pointer; border:1px solid transparent;
+  }
+  .btn-primary{background:var(--amber); color:#1a1305; border-color:var(--amber);}
+  .btn-primary:hover{background:#eeb75a;}
+  .btn-stop{background:var(--red); color:#fff; border-color:var(--red);}
+  .btn-stop:hover{background:#d66357;}
+  .btn-ghost{background:transparent; color:var(--text-dim); border-color:var(--border);}
+  .btn-ghost:hover{color:var(--text); border-color:var(--text-dim);}
+  button:disabled{opacity:0.45; cursor:not-allowed;}
+
+  .status-line{
+    display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--text-dim);
+    margin-top:14px;
+  }
+  .status-dot{width:7px; height:7px; border-radius:50%; background:var(--text-dim); flex:none;}
+  .status-dot.on{background:var(--green); box-shadow:0 0 0 3px rgba(79,163,125,0.18);}
+  .status-dot.err{background:var(--red);}
+
+  .grid{display:grid; grid-template-columns: 320px 1fr; gap:16px; margin-top:16px; align-items:start;}
+  @media(max-width:860px){ .grid{grid-template-columns:1fr;} }
+
+  .stat-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .stat{
+    background:var(--panel-2); border:1px solid var(--border); border-radius:8px;
+    padding:12px 13px;
+  }
+  .stat .k{font-size:11px; color:var(--text-dim); margin-bottom:5px;}
+  .stat .v{font-size:17px; font-weight:600;}
+  .v.pos{color:var(--green);} .v.neg{color:var(--red);}
+
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  thead th{
+    text-align:left; color:var(--text-dim); font-weight:500; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.04em; padding:6px 8px; border-bottom:1px solid var(--border);
+  }
+  tbody td{padding:8px 8px; border-bottom:1px solid #1F2330;}
+  tbody tr:last-child td{border-bottom:none;}
+  .right{text-align:right;}
+  .empty-row td{color:var(--text-dim); text-align:center; padding:22px 8px; font-size:12.5px;}
+
+  .tag{font-size:11px; padding:3px 8px; border-radius:4px; font-weight:600; white-space:nowrap;}
+  .tag-buy{background:rgba(224,168,69,0.12); color:var(--amber);}
+  .tag-sell-pos{background:rgba(79,163,125,0.14); color:var(--green);}
+  .tag-sell-neg{background:rgba(198,86,74,0.14); color:var(--red);}
+  .tag-neutro{background:rgba(141,146,163,0.12); color:var(--text-dim);}
+  .tag-held{background:rgba(224,168,69,0.1); color:var(--amber); border:1px solid var(--amber-dim);}
+
+  .log-scroll{max-height:380px; overflow-y:auto;}
+  .radar-scroll{max-height:300px; overflow-y:auto;}
+  .log-scroll::-webkit-scrollbar, .radar-scroll::-webkit-scrollbar{width:8px;}
+  .log-scroll::-webkit-scrollbar-thumb, .radar-scroll::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+
+  .chart-box{height:220px; position:relative;}
+
+  .pos-val{color:var(--green);} .neg-val{color:var(--red);}
+
+  footer{margin-top:26px; color:var(--text-dim); font-size:11.5px; text-align:center;}
+  footer a{color:var(--text-dim); text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>Ticker<span class="dot">.</span>sim</h1>
+      <p>Simulador de trading algorítmico. Analisa automaticamente um universo alargado de criptomoedas por capitalização de mercado, deteta oportunidades por cruzamento de médias móveis e compra e vende de forma fictícia.</p>
+    </div>
+    <div class="badge-sim">⚠ Dinheiro fictício — nenhuma operação real é executada</div>
+  </header>
+
+  <div class="panel">
+    <h2>Configuração da simulação</h2>
+    <div class="controls-row">
+      <div class="field">
+        <label for="capitalInput">Capital inicial (€)</label>
+        <input type="number" id="capitalInput" min="10" step="10" value="1000">
+      </div>
+      <div class="field">
+        <label for="universoInput">Universo analisado</label>
+        <select id="universoInput">
+          <option value="50">Top 50 por capitalização</option>
+          <option value="100" selected>Top 100 por capitalização</option>
+          <option value="150">Top 150 por capitalização</option>
+          <option value="250">Top 250 por capitalização</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="maxPosicoesInput">Máx. posições em simultâneo</label>
+        <input type="number" id="maxPosicoesInput" min="1" max="20" value="5">
+      </div>
+      <div class="field">
+        <label for="percTradeInput">Alocação por posição (%)</label>
+        <input type="number" id="percTradeInput" min="1" max="100" value="20">
+      </div>
+      <div class="field">
+        <label for="smaCurtaInput">Média curta</label>
+        <input type="number" id="smaCurtaInput" min="2" max="30" value="9">
+      </div>
+      <div class="field">
+        <label for="smaLongaInput">Média longa</label>
+        <input type="number" id="smaLongaInput" min="3" max="60" value="21">
+      </div>
+      <div class="field">
+        <label for="comissaoInput">Comissão simulada (%)</label>
+        <input type="number" id="comissaoInput" min="0" max="5" step="0.05" value="0.1">
+      </div>
+      <div class="field">
+        <label for="intervaloInput">Intervalo de verificação</label>
+        <select id="intervaloInput">
+          <option value="30">30 segundos</option>
+          <option value="60" selected>60 segundos</option>
+          <option value="120">120 segundos</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:auto;">
+        <button class="btn-primary" id="btnToggle">Iniciar simulação</button>
+      </div>
+      <div class="field" style="min-width:auto;">
+        <button class="btn-ghost" id="btnReset">Reiniciar tudo</button>
+      </div>
+    </div>
+    <p class="hint">Estratégia v3: usa o histórico de 7 dias da CoinGecko em vez de médias calculadas com amostras de 60 s. A entrada exige tendência (EMA curta > EMA longa > EMA 50), RSI saudável, momentum 1h/24h positivo e liquidez mínima. As saídas combinam stop-loss, take-profit, trailing-stop e perda de tendência. O objetivo é reduzir falsos sinais e privilegiar qualidade em vez de quantidade — sem garantia de rentabilidade.</p>
+
+    <div class="status-line">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">Parado — prima "Iniciar simulação" para começar.</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <!-- LEFT COLUMN -->
+    <div>
+      <div class="panel">
+        <h2>Resumo da carteira</h2>
+        <div class="stat-grid">
+          <div class="stat"><div class="k">Saldo em caixa</div><div class="v num" id="statCaixa">€0,00</div></div>
+          <div class="stat"><div class="k">Valor em posições</div><div class="v num" id="statPosicoes">€0,00</div></div>
+          <div class="stat"><div class="k">Valor total</div><div class="v num" id="statTotal">€0,00</div></div>
+          <div class="stat"><div class="k">Lucro / prejuízo</div><div class="v num" id="statPL">€0,00</div></div>
+          <div class="stat"><div class="k">Nº de operações</div><div class="v num" id="statOps">0</div></div>
+          <div class="stat"><div class="k">Taxa de acerto</div><div class="v num" id="statWin">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Posições abertas</h2>
+        <table>
+          <thead><tr><th>Moeda</th><th class="right">Qtd.</th><th class="right">P. médio</th><th class="right">Atual</th><th class="right">P/L</th></tr></thead>
+          <tbody id="posicoesBody"><tr class="empty-row"><td colspan="5">Sem posições abertas</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+      <div class="panel">
+        <h2>Valor da carteira ao longo do tempo</h2>
+        <div class="chart-box"><canvas id="chartValor"></canvas></div>
+      </div>
+
+      <div class="panel">
+        <h2>Radar de oportunidades <span class="sub">— moedas com maior força de sinal no universo analisado</span></h2>
+        <div class="radar-scroll">
+          <table>
+            <thead><tr><th>Moeda</th><th class="right">Preço</th><th class="right">1h</th><th class="right">24h</th><th>Sinal</th><th>Estado</th></tr></thead>
+            <tbody id="radarBody"><tr class="empty-row"><td colspan="6">Inicia a simulação para veres o radar em ação</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Registo de transações</h2>
+        <div class="log-scroll">
+          <table>
+            <thead>
+              <tr><th>Hora</th><th>Tipo</th><th>Moeda</th><th class="right">Preço</th><th class="right">Qtd.</th><th class="right">Valor</th><th class="right">Saldo após</th><th class="right">P/L</th></tr>
+            </thead>
+            <tbody id="logBody"><tr class="empty-row"><td colspan="8">Ainda sem transações. Inicia a simulação para começares a ver operações aqui.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Preços e capitalização obtidos em tempo real via CoinGecko API · Estratégia v3: EMA multi-período + RSI + momentum + liquidez + stop-loss/take-profit/trailing-stop, usando sparkline de 7 dias · Ferramenta puramente educativa, sem qualquer ligação a contas ou corretoras reais.
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const STORAGE_KEY = 'ticker_sim_state_v2';
+  const MAX_HISTORY_POINTS = 300;
+  const MAX_LOG_ROWS = 250;
+  const MAX_PRICE_HISTORY = 100;
+
+  const STABLECOINS = new Set([
+    'usdt','usdc','dai','busd','tusd','usde','fdusd','usdd','gusd','pyusd',
+    'eurc','usdp','frax','lusd','susd','usdy','usds','buidl','usd0','eusd',
+    'crvusd','pax','eurt','xsgd','usdx'
+  ]);
+
+  function defaultState(capital){
+    return {
+      capitalInicial: capital,
+      caixa: capital,
+      posicoes: {},            // id -> {symbol, name, qty, custoMedio}
+      historicoTransacoes: [],
+      historicoValor: [],      // {t, v}
+      precoHistorico: {},      // id -> [preços observados]
+      relacaoAnterior: {},     // id -> 'acima' | 'abaixo'
+      universoTamanho: 100,
+      maxPosicoesAbertas: 5,
+      smaCurta: 9,
+      smaLonga: 21,
+      cooldownAte: {},
+      percTrade: 20,
+      comissao: 0.1,
+      intervaloSeg: 60,
+      emExecucao: false,
+    };
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw) return Object.assign(defaultState(1000), JSON.parse(raw));
+    }catch(e){ console.warn('Falha ao carregar estado guardado', e); }
+    return defaultState(1000);
+  }
+
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ console.warn('Falha ao guardar estado', e); }
+  }
+
+  let state = loadState();
+  if(!state.cooldownAte){ state.cooldownAte={}; }
+  if(state.smaCurta===5 && state.smaLonga===15){ state.smaCurta=9; state.smaLonga=21; }
+  let timerId = null;
+  let chart = null;
+  let ultimoRadar = []; // last computed radar rows, for rendering
+
+  // ---------- helpers ----------
+  const fmtEUR = (n) => (n<0?'-':'') + '€' + Math.abs(n).toLocaleString('pt-PT',{minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmtPreco = (n) => {
+    if(n >= 1) return fmtEUR(n);
+    // moedas de baixo valor precisam de mais casas decimais
+    return '€' + n.toLocaleString('pt-PT',{minimumFractionDigits:2, maximumFractionDigits:8});
+  };
+  const fmtQty = (n) => n.toLocaleString('pt-PT',{minimumFractionDigits:2, maximumFractionDigits:6});
+  const fmtHora = (t) => new Date(t).toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const fmtPct = (n) => (n==null || isNaN(n)) ? '—' : (n>=0?'+':'') + n.toFixed(2) + '%';
+
+  function sma(arr, period){
+    if(arr.length < period) return null;
+    const slice = arr.slice(arr.length-period);
+    return slice.reduce((a,b)=>a+b,0) / period;
+  }
+
+  function emaSeries(arr, period){
+    if(!arr || arr.length < period) return [];
+    const k = 2/(period+1);
+    let prev = arr.slice(0,period).reduce((a,b)=>a+b,0)/period;
+    const out = Array(period-1).fill(null).concat(prev);
+    for(let i=period;i<arr.length;i++){ prev = arr[i]*k + prev*(1-k); out.push(prev); }
+    return out;
+  }
+
+  function rsi(arr, period=14){
+    if(!arr || arr.length < period+1) return null;
+    let gains=0, losses=0;
+    for(let i=arr.length-period;i<arr.length;i++){
+      const d=arr[i]-arr[i-1]; if(d>0) gains+=d; else losses-=d;
+    }
+    if(losses===0) return 100;
+    const rs=(gains/period)/(losses/period);
+    return 100-(100/(1+rs));
+  }
+
+  function pct(a,b){ return (a && b) ? ((b-a)/a)*100 : 0; }
+
+  function valorPosicoes(precosAtuais){
+    let total = 0;
+    for(const id in state.posicoes){
+      const pos = state.posicoes[id];
+      const preco = (precosAtuais && precosAtuais[id]) || pos.ultimoPreco || pos.custoMedio;
+      total += pos.qty * preco;
+    }
+    return total;
+  }
+
+  // ---------- trading logic ----------
+  function comprar(id, meta, preco){
+    const disponivel = state.caixa * (state.percTrade/100);
+    if(disponivel < 1 || state.caixa < 1) return false;
+    const comissaoValor = disponivel * (state.comissao/100);
+    const valorLiquido = disponivel - comissaoValor;
+    const qty = valorLiquido / preco;
+    if(qty <= 0) return false;
+
+    state.posicoes[id] = {symbol: meta.symbol, name: meta.name, qty, custoMedio: preco, ultimoPreco: preco, maxPreco: preco, abertoEm: Date.now()};
+    state.caixa -= disponivel;
+    registarTransacao('compra', id, meta.symbol, preco, qty, disponivel, comissaoValor, null);
+    return true;
+  }
+
+  function vender(id, preco){
+    const pos = state.posicoes[id];
+    if(!pos || pos.qty <= 0) return;
+    const valorBruto = pos.qty * preco;
+    const comissaoValor = valorBruto * (state.comissao/100);
+    const valorLiquido = valorBruto - comissaoValor;
+    const pl = valorLiquido - (pos.qty * pos.custoMedio);
+    state.caixa += valorLiquido;
+    const qtyVendida = pos.qty;
+    const symbol = pos.symbol;
+    delete state.posicoes[id];
+    state.cooldownAte = state.cooldownAte || {};
+    state.cooldownAte[id] = Date.now() + 6*60*60*1000;
+    registarTransacao('venda', id, symbol, preco, qtyVendida, valorLiquido, comissaoValor, pl);
+  }
+
+  function registarTransacao(tipo, id, symbol, preco, qty, valor, comissaoValor, pl){
+    state.historicoTransacoes.unshift({
+      t: Date.now(), tipo, id, symbol, preco, qty, valor, comissaoValor, pl,
+      saldoApos: state.caixa
+    });
+    if(state.historicoTransacoes.length > MAX_LOG_ROWS){
+      state.historicoTransacoes.length = MAX_LOG_ROWS;
+    }
+  }
+
+  // ---------- price fetching + strategy ----------
+  async function fetchMarkets(perPage, ids){
+    const params = new URLSearchParams({
+      vs_currency:'eur', order:'market_cap_desc', per_page:String(perPage),
+      page:'1', price_change_percentage:'1h,24h', sparkline:'true'
+    });
+    if(ids) params.set('ids', ids);
+    else params.set('per_page', String(perPage));
+    const url = 'https://api.coingecko.com/api/v3/coins/markets?' + params.toString();
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  }
+
+  async function atualizarPrecos(){
+    setStatus('a-obter');
+    try{
+      let lista = await fetchMarkets(state.universoTamanho);
+      lista = lista.filter(c => c && c.current_price != null && !STABLECOINS.has((c.symbol||'').toLowerCase()));
+
+      const idsNaLista = new Set(lista.map(c=>c.id));
+      const idsEmFalta = Object.keys(state.posicoes).filter(id => !idsNaLista.has(id));
+      if(idsEmFalta.length > 0){
+        try{
+          const extra = await fetchMarkets(idsEmFalta.length, idsEmFalta.join(','));
+          lista = lista.concat(extra.filter(c => c && c.current_price != null));
+        }catch(e){ console.warn('Não foi possível atualizar preço de posições fora do universo atual', e); }
+      }
+
+      const precosAtuais = {}, sinaisCompra = [], sinaisVenda = [], radarRows = [];
+      state.cooldownAte = state.cooldownAte || {};
+
+      for(const c of lista){
+        const id=c.id, preco=c.current_price;
+        precosAtuais[id]=preco;
+        const meta={symbol:(c.symbol||'').toUpperCase(), name:c.name||c.symbol};
+        const hist=((c.sparkline_in_7d && c.sparkline_in_7d.price)||[]).filter(Number.isFinite);
+        if(hist.length < 55) continue;
+
+        const fast=emaSeries(hist, state.smaCurta);
+        const slow=emaSeries(hist, state.smaLonga);
+        const trend=emaSeries(hist, 50);
+        const i=hist.length-1, prev=i-1;
+        const ef=fast[i], es=slow[i], et=trend[i];
+        const efPrev=fast[prev], esPrev=slow[prev];
+        if([ef,es,et,efPrev,esPrev].some(v=>v==null)) continue;
+
+        const rsi14=rsi(hist,14);
+        const mom6=pct(hist[Math.max(0,i-6)], hist[i]);
+        const mom24=pct(hist[Math.max(0,i-24)], hist[i]);
+        const h1=Number(c.price_change_percentage_1h_in_currency)||0;
+        const h24=Number(c.price_change_percentage_24h_in_currency)||0;
+        const volRatio=(Number(c.market_cap)>0) ? Number(c.total_volume)/Number(c.market_cap) : 0;
+        const spread=((ef-es)/es)*100;
+        const estaEmCarteira=!!state.posicoes[id];
+        const cruzouAlta=efPrev<=esPrev && ef>es;
+        const tendenciaAlta=ef>es && es>et && preco>et;
+        const momentumOK=mom6>0.15 && mom24>0.4 && h1>-1.0 && h24>0;
+        const rsiOK=rsi14>=48 && rsi14<=68;
+        const liquidezOK=volRatio>=0.008;
+        const cooldownOK=!state.cooldownAte[id] || Date.now()>=state.cooldownAte[id];
+        const score=(tendenciaAlta?35:0)+(momentumOK?25:0)+(rsiOK?20:0)+(liquidezOK?10:0)+(cruzouAlta?10:0)+Math.min(10,Math.max(0,spread*20));
+
+        if(estaEmCarteira){
+          const pos=state.posicoes[id];
+          pos.ultimoPreco=preco;
+          pos.maxPreco=Math.max(pos.maxPreco||pos.custoMedio, preco);
+          const plPct=((preco-pos.custoMedio)/pos.custoMedio)*100;
+          const drawdown=((preco-pos.maxPreco)/pos.maxPreco)*100;
+          const bearish=ef<es || (rsi14<42 && mom6<0);
+          const stopLoss=plPct<=-2.8;
+          const takeProfit=plPct>=6.0;
+          const trailing=plPct>=2.0 && drawdown<=-1.8;
+          if(stopLoss || takeProfit || trailing || bearish) sinaisVenda.push({id,preco});
+        } else if(cooldownOK && tendenciaAlta && momentumOK && rsiOK && liquidezOK && (cruzouAlta || spread<1.2)){
+          sinaisCompra.push({id,meta,preco,forca:score,rsi:rsi14});
+        }
+
+        radarRows.push({id,symbol:meta.symbol,preco,h1,h24,relacao:tendenciaAlta?'acima':'abaixo',forca:score,emCarteira:estaEmCarteira});
+      }
+
+      for(const s of sinaisVenda) vender(s.id,s.preco);
+      sinaisCompra.sort((a,b)=>b.forca-a.forca);
+      for(const s of sinaisCompra){
+        if(Object.keys(state.posicoes).length>=state.maxPosicoesAbertas) break;
+        if(state.caixa<1) break;
+        comprar(s.id,s.meta,s.preco);
+      }
+
+      radarRows.sort((a,b)=>(b.forca||0)-(a.forca||0));
+      ultimoRadar=radarRows.slice(0,15);
+      state.historicoValor.push({t:Date.now(),v:state.caixa+valorPosicoes(precosAtuais)});
+      if(state.historicoValor.length>MAX_HISTORY_POINTS) state.historicoValor.shift();
+      setStatus('ok',{analisadas:lista.length,oportunidades:sinaisCompra.length});
+    }catch(e){
+      console.error('Erro ao obter dados de mercado',e);
+      setStatus('erro');
+    }
+    saveState(); render();
+  }
+
+  // ---------- control ----------
+  function iniciar(){
+    if(state.emExecucao) return;
+    state.emExecucao = true;
+    saveState();
+    atualizarPrecos();
+    timerId = setInterval(atualizarPrecos, state.intervaloSeg*1000);
+    render();
+  }
+
+  function parar(){
+    state.emExecucao = false;
+    if(timerId) clearInterval(timerId);
+    timerId = null;
+    saveState();
+    setStatus('parado');
+    render();
+  }
+
+  function reiniciar(){
+    parar();
+    const capitalInput = parseFloat(document.getElementById('capitalInput').value) || 1000;
+    const {universoTamanho, maxPosicoesAbertas, smaCurta, smaLonga, percTrade, comissao, intervaloSeg} = state;
+    state = defaultState(capitalInput);
+    Object.assign(state, {universoTamanho, maxPosicoesAbertas, smaCurta, smaLonga, percTrade, comissao, intervaloSeg});
+    ultimoRadar = [];
+    saveState();
+    setStatus('parado');
+    render();
+  }
+
+  // ---------- status ----------
+  function setStatus(kind, info){
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.className = 'status-dot';
+    const agora = new Date().toLocaleTimeString('pt-PT');
+    if(kind === 'a-obter'){ txt.textContent = 'A analisar o mercado...'; }
+    else if(kind === 'ok'){
+      dot.classList.add('on');
+      const extra = info ? ` — ${info.analisadas} moedas analisadas, ${info.oportunidades} oportunidade(s) detetada(s)` : '';
+      txt.textContent = 'Em execução — última verificação às ' + agora + extra + '.';
+    }
+    else if(kind === 'erro'){ dot.classList.add('err'); txt.textContent = 'Erro ao obter dados de mercado (rede ou limite da API gratuita). A tentar novamente no próximo ciclo.'; }
+    else { txt.textContent = 'Parado — prima "Iniciar simulação" para começar.'; }
+  }
+
+  // ---------- rendering ----------
+  function render(){
+    const vPos = valorPosicoes();
+    document.getElementById('statCaixa').textContent = fmtEUR(state.caixa);
+    document.getElementById('statPosicoes').textContent = fmtEUR(vPos);
+    const vTotal = state.caixa + vPos;
+    document.getElementById('statTotal').textContent = fmtEUR(vTotal);
+
+    const pl = vTotal - state.capitalInicial;
+    const plEl = document.getElementById('statPL');
+    plEl.textContent = (pl>=0?'+':'') + fmtEUR(pl);
+    plEl.className = 'v num ' + (pl>=0?'pos':'neg');
+
+    const vendas = state.historicoTransacoes.filter(t=>t.tipo==='venda');
+    document.getElementById('statOps').textContent = state.historicoTransacoes.length;
+    const winEl = document.getElementById('statWin');
+    if(vendas.length===0){ winEl.textContent = '—'; }
+    else{
+      const ganhas = vendas.filter(t=>t.pl>0).length;
+      winEl.textContent = Math.round(ganhas/vendas.length*100) + '% (' + ganhas + '/' + vendas.length + ')';
+    }
+
+    // posições
+    const posBody = document.getElementById('posicoesBody');
+    const ids = Object.keys(state.posicoes);
+    if(ids.length===0){
+      posBody.innerHTML = '<tr class="empty-row"><td colspan="5">Sem posições abertas</td></tr>';
+    } else {
+      posBody.innerHTML = ids.map(id=>{
+        const pos = state.posicoes[id];
+        const precoAtual = pos.ultimoPreco || pos.custoMedio;
+        const plPos = (precoAtual - pos.custoMedio) * pos.qty;
+        return `<tr>
+          <td>${pos.symbol}</td>
+          <td class="right num">${fmtQty(pos.qty)}</td>
+          <td class="right num">${fmtPreco(pos.custoMedio)}</td>
+          <td class="right num">${fmtPreco(precoAtual)}</td>
+          <td class="right num ${plPos>=0?'pos-val':'neg-val'}">${plPos>=0?'+':''}${fmtEUR(plPos)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // radar
+    const radarBody = document.getElementById('radarBody');
+    if(ultimoRadar.length===0){
+      radarBody.innerHTML = '<tr class="empty-row"><td colspan="6">Inicia a simulação para veres o radar em ação</td></tr>';
+    } else {
+      radarBody.innerHTML = ultimoRadar.map(r=>{
+        let sinalTag;
+        if(r.relacao === 'acima') sinalTag = '<span class="tag tag-buy">Tendência de alta</span>';
+        else sinalTag = '<span class="tag tag-neutro">Tendência de baixa</span>';
+        const estadoTag = r.emCarteira ? '<span class="tag tag-held">Em carteira</span>' : '—';
+        return `<tr>
+          <td>${r.symbol}</td>
+          <td class="right num">${fmtPreco(r.preco)}</td>
+          <td class="right num ${r.h1>=0?'pos-val':'neg-val'}">${fmtPct(r.h1)}</td>
+          <td class="right num ${r.h24>=0?'pos-val':'neg-val'}">${fmtPct(r.h24)}</td>
+          <td>${sinalTag}</td>
+          <td>${estadoTag}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // log
+    const logBody = document.getElementById('logBody');
+    if(state.historicoTransacoes.length===0){
+      logBody.innerHTML = '<tr class="empty-row"><td colspan="8">Ainda sem transações. Inicia a simulação para começares a ver operações aqui.</td></tr>';
+    } else {
+      logBody.innerHTML = state.historicoTransacoes.map(t=>{
+        let tagHtml;
+        if(t.tipo==='compra'){
+          tagHtml = '<span class="tag tag-buy">Compra</span>';
+        } else {
+          const cls = t.pl>=0 ? 'tag-sell-pos' : 'tag-sell-neg';
+          tagHtml = `<span class="tag ${cls}">Venda</span>`;
+        }
+        return `<tr>
+          <td class="num">${fmtHora(t.t)}</td>
+          <td>${tagHtml}</td>
+          <td>${t.symbol}</td>
+          <td class="right num">${fmtPreco(t.preco)}</td>
+          <td class="right num">${fmtQty(t.qty)}</td>
+          <td class="right num">${fmtEUR(t.valor)}</td>
+          <td class="right num">${fmtEUR(t.saldoApos)}</td>
+          <td class="right num ${t.pl==null?'':(t.pl>=0?'pos-val':'neg-val')}">${t.pl==null?'—':(t.pl>=0?'+':'')+fmtEUR(t.pl)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    renderChart();
+
+    const btnToggle = document.getElementById('btnToggle');
+    if(state.emExecucao){
+      btnToggle.textContent = 'Parar simulação';
+      btnToggle.className = 'btn-stop';
+    } else {
+      btnToggle.textContent = 'Iniciar simulação';
+      btnToggle.className = 'btn-primary';
+    }
+  }
+
+  function renderChart(){
+    const ctx = document.getElementById('chartValor').getContext('2d');
+    const labels = state.historicoValor.map(p=>fmtHora(p.t));
+    const dados = state.historicoValor.map(p=>p.v);
+    if(!chart){
+      chart = new Chart(ctx, {
+        type:'line',
+        data:{ labels, datasets:[{
+          label:'Valor da carteira',
+          data: dados,
+          borderColor:'#E0A845',
+          backgroundColor:'rgba(224,168,69,0.08)',
+          fill:true, tension:0.25, pointRadius:0, borderWidth:2,
+        }]},
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          animation:false,
+          scales:{
+            x:{ ticks:{ color:'#8D92A3', maxTicksLimit:6 }, grid:{ color:'#1F2330' } },
+            y:{ ticks:{ color:'#8D92A3', callback:(v)=>'€'+v }, grid:{ color:'#1F2330' } }
+          },
+          plugins:{ legend:{ display:false } }
+        }
+      });
+    } else {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = dados;
+      chart.update('none');
+    }
+  }
+
+  // ---------- wire up controls ----------
+  function wireControls(){
+    document.getElementById('capitalInput').value = state.capitalInicial;
+    document.getElementById('universoInput').value = String(state.universoTamanho);
+    document.getElementById('maxPosicoesInput').value = state.maxPosicoesAbertas;
+    document.getElementById('smaCurtaInput').value = state.smaCurta;
+    document.getElementById('smaLongaInput').value = state.smaLonga;
+    document.getElementById('percTradeInput').value = state.percTrade;
+    document.getElementById('comissaoInput').value = state.comissao;
+    document.getElementById('intervaloInput').value = String(state.intervaloSeg);
+
+    document.getElementById('universoInput').addEventListener('change', e=>{ state.universoTamanho = parseInt(e.target.value); saveState(); });
+    document.getElementById('maxPosicoesInput').addEventListener('change', e=>{ state.maxPosicoesAbertas = Math.min(20, Math.max(1, parseInt(e.target.value)||5)); saveState(); });
+    document.getElementById('smaCurtaInput').addEventListener('change', e=>{ state.smaCurta = Math.max(2, parseInt(e.target.value)||5); saveState(); });
+    document.getElementById('smaLongaInput').addEventListener('change', e=>{ state.smaLonga = Math.max(3, parseInt(e.target.value)||15); saveState(); });
+    document.getElementById('percTradeInput').addEventListener('change', e=>{ state.percTrade = Math.min(100, Math.max(1, parseFloat(e.target.value)||20)); saveState(); });
+    document.getElementById('comissaoInput').addEventListener('change', e=>{ state.comissao = Math.max(0, parseFloat(e.target.value)||0); saveState(); });
+    document.getElementById('intervaloInput').addEventListener('change', e=>{
+      state.intervaloSeg = parseInt(e.target.value);
+      saveState();
+      if(state.emExecucao){ clearInterval(timerId); timerId = setInterval(atualizarPrecos, state.intervaloSeg*1000); }
+    });
+
+    document.getElementById('btnToggle').addEventListener('click', ()=>{
+      if(state.emExecucao) parar(); else iniciar();
+    });
+    document.getElementById('btnReset').addEventListener('click', ()=>{
+      if(confirm('Reiniciar a simulação? O capital, as posições e o histórico atuais serão apagados.')) reiniciar();
+    });
+  }
+
+  // ---------- init ----------
+  wireControls();
+  setStatus(state.emExecucao ? 'ok' : 'parado');
+  render();
+  if(state.emExecucao){
+    timerId = setInterval(atualizarPrecos, state.intervaloSeg*1000);
+    atualizarPrecos();
+  }
+})();
+</script>
+</body>
+</html>
